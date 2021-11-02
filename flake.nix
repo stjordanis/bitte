@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-21.05";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixpkgs-terraform.url =
       "github:input-output-hk/nixpkgs/iohk-terraform-2021-06";
     utils.url = "github:kreisys/flake-utils";
@@ -44,7 +45,7 @@
   };
 
   outputs =
-    { self, hydra, hydra-provisioner, nixpkgs, utils, bitte-cli, ... }@inputs:
+    { self, hydra, hydra-provisioner, nixpkgs, nixpkgs-unstable, utils, bitte-cli, ... }@inputs:
     let
       lib = import ./lib {
         inherit (nixpkgs) lib;
@@ -66,7 +67,7 @@
       packages = { bitte, cfssl, consul, cue, glusterfs, grafana-loki, haproxy
         , haproxy-auth-request, haproxy-cors, nixFlakes, nomad, nomad-autoscaler
         , oauth2-proxy, sops, ssm-agent, terraform-with-plugins, vault-backend
-        , vault-bin, ci-env }@pkgs:
+        , vault-bin, ci-env, grafana }@pkgs:
         pkgs;
 
       hydraJobs = { bitte, cfssl, consul, cue, glusterfs, grafana-loki, haproxy

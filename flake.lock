@@ -289,6 +289,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-unstable": {
+      "locked": {
+        "lastModified": 1635792138,
+        "narHash": "sha256-D79GqaYrwgyM4wvOPbQeKveAHROnVh97F36iSGZO9uA=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "b165ce0c4efbb74246714b5c66b6bcdce8cde175",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nomad-source": {
       "flake": false,
       "locked": {
@@ -332,6 +348,7 @@
         "nix": "nix",
         "nixpkgs": "nixpkgs",
         "nixpkgs-terraform": "nixpkgs-terraform",
+        "nixpkgs-unstable": "nixpkgs-unstable",
         "nomad-source": "nomad-source",
         "ops-lib": "ops-lib",
         "terranix": "terranix",
