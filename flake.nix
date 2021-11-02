@@ -44,8 +44,8 @@
     nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs =
-    { self, hydra, hydra-provisioner, nixpkgs, nixpkgs-unstable, utils, bitte-cli, ... }@inputs:
+  outputs = { self, hydra, hydra-provisioner, nixpkgs, nixpkgs-unstable, utils
+    , bitte-cli, ... }@inputs:
     let
       lib = import ./lib {
         inherit (nixpkgs) lib;
@@ -64,16 +64,17 @@
 
       shell = { devShell }: devShell;
 
-      packages = { bitte, cfssl, consul, cue, glusterfs, grafana-loki, haproxy
-        , haproxy-auth-request, haproxy-cors, nixFlakes, nomad, nomad-autoscaler
-        , oauth2-proxy, sops, ssm-agent, terraform-with-plugins, vault-backend
-        , vault-bin, ci-env, grafana }@pkgs:
+      packages = { bitte, cfssl, consul, cue, glusterfs, grafana, grafana-loki
+        , haproxy, haproxy-auth-request, haproxy-cors, nixFlakes, nomad
+        , nomad-autoscaler, oauth2-proxy, sops, ssm-agent
+        , terraform-with-plugins, vault-backend, vault-bin, ci-env }@pkgs:
         pkgs;
 
-      hydraJobs = { bitte, cfssl, consul, cue, glusterfs, grafana-loki, haproxy
-        , haproxy-auth-request, haproxy-cors, nixFlakes, nomad, nomad-autoscaler
-        , oauth2-proxy, sops, ssm-agent, terraform-with-plugins, vault-backend
-        , vault-bin, ci-env, mkRequired, asgAMI }@pkgs:
+      hydraJobs = { bitte, cfssl, consul, cue, glusterfs, grafana, grafana-loki
+        , haproxy, haproxy-auth-request, haproxy-cors, nixFlakes, nomad
+        , nomad-autoscaler, oauth2-proxy, sops, ssm-agent
+        , terraform-with-plugins, vault-backend, vault-bin, ci-env, mkRequired
+        , asgAMI }@pkgs:
         let constituents = builtins.removeAttrs pkgs [ "mkRequired" ];
         in constituents // { required = mkRequired constituents; };
 
