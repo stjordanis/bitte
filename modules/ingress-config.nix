@@ -100,8 +100,10 @@ in {
         default-server check maxconn 2000
         server grafana 127.0.0.1:3000
 
+      backend alertmanager
+        server alertmanager 127.0.0.1:9093 check
+
       backend oauth_proxy
-        mode http
         server auth_request 127.0.0.1:4180 check
 
       backend nomad
@@ -122,7 +124,6 @@ in {
         server consul 127.0.0.1:8500
 
       backend docker
-        mode http
         http-request set-header X-Forwarded-Proto "https"
         server docker 127.0.0.1:5000
 
@@ -142,14 +143,15 @@ in {
       frontend https
         bind *:443 ssl crt ${acme-full} alpn h2,http/1.1
 
-        acl oauth_proxy path_beg /oauth2/
-        acl authenticated var(txn.auth_response_successful) -m bool
-        acl is_monitoring hdr(host) -i monitoring.${domain}
-        acl is_vault     hdr(host) -i vault.${domain}
-        acl is_nomad     hdr(host) -i nomad.${domain}
-        acl is_consul    hdr(host) -i consul.${domain}
-        acl is_docker    hdr(host) -i docker.${domain}
-        acl is_ui path_beg /ui
+        acl oauth_proxy     path_beg /oauth2/
+        acl authenticated   var(txn.auth_response_successful) -m bool
+        acl is_alertmanager path_beg /alertmanager
+        acl is_monitoring   hdr(host) -i monitoring.${domain}
+        acl is_vault        hdr(host) -i vault.${domain}
+        acl is_nomad        hdr(host) -i nomad.${domain}
+        acl is_consul       hdr(host) -i consul.${domain}
+        acl is_docker       hdr(host) -i docker.${domain}
+        acl is_ui           path_beg /ui
         ${config.services.ingress-config.extraHttpsAcls}
 
         http-request lua.auth-request oauth_proxy /oauth2/auth
@@ -158,14 +160,15 @@ in {
         ${config.services.ingress-config.extraHttpsFrontendConfig}
 
         use_backend oauth_proxy if oauth_proxy
-        use_backend docker if is_docker
-        use_backend consul  if is_consul is_ui authenticated OR is_consul ! is_ui
-        use_backend vault   if is_vault  is_ui authenticated OR is_vault ! is_ui
-        use_backend nomad   if is_nomad  is_ui authenticated OR is_nomad ! is_ui
+        use_backend docker      if is_docker
+        use_backend consul      if is_consul is_ui authenticated OR is_consul ! is_ui
+        use_backend vault       if is_vault  is_ui authenticated OR is_vault ! is_ui
+        use_backend nomad       if is_nomad  is_ui authenticated OR is_nomad ! is_ui
         ${config.services.ingress-config.extraHttpsBackends}
 
-        use_backend oauth_proxy if is_ui ! authenticated OR is_monitoring ! authenticated
-        use_backend grafana if is_monitoring
+        use_backend oauth_proxy  if is_ui ! authenticated OR is_monitoring ! authenticated
+        use_backend alertmanager if is_monitoring is_alertmanager
+        use_backend grafana      if is_monitoring
 
       ${config.services.ingress-config.extraConfig}
     '';
