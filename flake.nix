@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-21.05";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/7733d9cae98ab91f36d35005d8aef52873d23b5b";
     nixpkgs-terraform.url =
       "github:input-output-hk/nixpkgs/iohk-terraform-2021-06";
     utils.url = "github:kreisys/flake-utils";
