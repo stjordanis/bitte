@@ -1,6 +1,6 @@
 { pkgs, config, lib, pkiFiles, ... }:
 let
-  inherit (lib) mkIf makeBinPath concatStringsSep mapAttrsToList;
+  inherit (lib) mkIf makeBinPath concatStringsSep mapAttrsToList optionalString;
   inherit (config.cluster) domain instances;
   acme-full = "/etc/ssl/certs/${domain}-full.pem";
 in {
@@ -100,6 +100,18 @@ in {
         default-server check maxconn 2000
         server grafana 127.0.0.1:3000
 
+      ${optionalString config.services.prometheus.alertmanager.enable ''
+        backend alertmanager
+          server alertmanager 127.0.0.1:9093 check''}
+
+      ${optionalString config.services.vmagent.enable ''
+        backend vmagent
+          server vmagent ${config.services.vmagent.httpListenAddr} check''}
+
+      ${optionalString config.services.vmalert.enable ''
+        backend vmalert
+          server vmalert ${config.services.vmalert.httpListenAddr} check''}
+
       backend oauth_proxy
         mode http
         server auth_request 127.0.0.1:4180 check
@@ -144,6 +156,18 @@ in {
 
         acl oauth_proxy path_beg /oauth2/
         acl authenticated var(txn.auth_response_successful) -m bool
+        ${
+          optionalString config.services.prometheus.alertmanager.enable
+          "acl is_alertmanager path_beg /alertmanager"
+        }
+        ${
+          optionalString config.services.vmagent.enable
+          "acl is_vmagent      path_beg ${config.services.vmagent.httpPathPrefix}"
+        }
+        ${
+          optionalString config.services.vmagent.enable
+          "acl is_vmalert      path_beg ${config.services.vmalert.httpPathPrefix}"
+        }
         acl is_monitoring hdr(host) -i monitoring.${domain}
         acl is_vault     hdr(host) -i vault.${domain}
         acl is_nomad     hdr(host) -i nomad.${domain}
@@ -165,6 +189,18 @@ in {
         ${config.services.ingress-config.extraHttpsBackends}
 
         use_backend oauth_proxy if is_ui ! authenticated OR is_monitoring ! authenticated
+        ${
+          optionalString config.services.prometheus.alertmanager.enable
+          "use_backend alertmanager if is_monitoring is_alertmanager"
+        }
+        ${
+          optionalString config.services.vmagent.enable
+          "use_backend vmagent if is_monitoring is_vmagent"
+        }
+        ${
+          optionalString config.services.vmalert.enable
+          "use_backend vmalert if is_monitoring is_vmalert"
+        }
         use_backend grafana if is_monitoring
 
       ${config.services.ingress-config.extraConfig}
