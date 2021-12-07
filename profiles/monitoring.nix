@@ -15,6 +15,24 @@ in {
     ./vault/client.nix
   ];
 
+  # Nix alertmanager module requires group rule syntax checking,
+  # but env substitution through services.prometheus.alertmanager.environmentFile
+  # requires bash variables in the group rules which will not pass syntax validation
+  # in some fields, such as a url field.  This works around the problem.
+  systemd.services.alertmanager.preStart = let
+    cfg = config.services.prometheus.alertmanager;
+    alertmanagerYml = if cfg.configText != null then
+      pkgs.writeText "alertmanager.yml" cfg.configText
+    else
+      pkgs.writeText "alertmanager.yml" (builtins.toJSON cfg.configuration);
+  in lib.mkForce ''
+    ${pkgs.gnused}/bin/sed 's|https://deadmanssnitch.com|$DEADMANSSNITCH|g' "${alertmanagerYml}" > "/tmp/alert-manager-sed.yaml"
+    ${
+      lib.getBin pkgs.envsubst
+    }/bin/envsubst -o "/tmp/alert-manager-substituted.yaml" \
+                                             -i "/tmp/alert-manager-sed.yaml"
+  '';
+
   services = {
     consul.ui = true;
     nomad.enable = false;
@@ -34,6 +52,39 @@ in {
       retentionPeriod = 12; # months
     };
 
+    vmagent = {
+      enable = true;
+      httpPathPrefix = "/vmagent";
+      promscrapeConfig = [
+        (lib.mkIf config.services.vmagent.enable {
+          job_name = "vmagent";
+          scrape_interval = "60s";
+          metrics_path = "${config.services.vmagent.httpPathPrefix}/metrics";
+          static_configs = [{
+            targets = [ "${config.services.vmagent.httpListenAddr}" ];
+            labels = { alias = "vmagent"; };
+          }];
+        })
+        (lib.mkIf config.services.vmalert.enable {
+          job_name = "vmalert";
+          scrape_interval = "60s";
+          metrics_path = "${config.services.vmalert.httpPathPrefix}/metrics";
+          static_configs = [{
+            targets = [ "${config.services.vmalert.httpListenAddr}" ];
+            labels = { alias = "vmalert"; };
+          }];
+        })
+      ];
+    };
+
+    vmalert = {
+      enable = true;
+      externalUrl = "https://monitoring.${domain}/vmalert";
+      httpPathPrefix = "/vmalert";
+      rules = (import ./monitoring/alerts/alerts.nix
+        "https://monitoring.${domain}").groups;
+    };
+
     loki = { enable = true; };
 
     grafana = {
@@ -47,6 +98,14 @@ in {
         AUTH_PROXY_HEADER_NAME = "X-Authenticated-User";
         AUTH_SIGNOUT_REDIRECT_URL = "/oauth2/sign_out";
         USERS_AUTO_ASSIGN_ORG_ROLE = "Editor";
+
+        # Enable next generation alerting for >= 8.2.x and disable legacy
+        UNIFIED_ALERTING_ENABLED = "true";
+        ALERTING_ENABLED = "false";
+
+        # Enable next generation alerting for >= 8.0.x && < 8.2.x and enable legacy
+        # FEATURE_TOGGLES_ENABLE = "ngalert";
+        # ALERTING_ENABLED = "true";
       };
       rootUrl = "https://monitoring.${domain}/";
       provision = {
@@ -68,7 +127,7 @@ in {
 
         dashboards = [{
           name = "provisioned";
-          options.path = ./monitoring;
+          options.path = ./monitoring/dashboards;
         }];
       };
 
@@ -76,6 +135,51 @@ in {
     };
 
     prometheus = {
+      alertmanagers = [{
+        scheme = "http";
+        path_prefix = "/";
+        static_configs = [{ targets = [ "localhost:9093" ]; }];
+      }];
+
+      alertmanager = {
+        enable = true;
+        environmentFile = "/run/keys/alertmanager";
+        listenAddress = "localhost";
+        webExternalUrl = "https://monitoring.${domain}/alertmanager";
+        configuration = {
+          route = {
+            group_by = [ "alertname" "alias" ];
+            group_wait = "30s";
+            group_interval = "2m";
+            receiver = "team-pager";
+            routes = [
+              {
+                match = { severity = "page"; };
+                receiver = "team-pager";
+              }
+              {
+                match = { alertname = "DeadMansSnitch"; };
+                repeat_interval = "5m";
+                receiver = "deadmanssnitch";
+              }
+            ];
+          };
+          receivers = [
+            {
+              name = "team-pager";
+              pagerduty_configs = [{ service_key = "$PAGERDUTY"; }];
+            }
+            {
+              name = "deadmanssnitch";
+              webhook_configs = [{
+                send_resolved = false;
+                url = "https://deadmanssnitch.com";
+              }];
+            }
+          ];
+        };
+      };
+
       exporters = {
         blackbox = {
           enable = true;
