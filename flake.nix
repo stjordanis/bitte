@@ -5,6 +5,8 @@
     nixpkgs-core.url = "github:nixos/nixpkgs/release-21.05";
     nixpkgs-client.url = "github:nixos/nixpkgs/release-21.05";
     nixpkgs-auxiliary.url = "github:nixos/nixpkgs/nixos-21.11";
+    nixpkgs-unstable.url =
+      "github:nixos/nixpkgs/7733d9cae98ab91f36d35005d8aef52873d23b5b";
 
     # in function of https://github.com/NixOS/nix/pull/5544
     # we want to bump this nix version soon-ish
